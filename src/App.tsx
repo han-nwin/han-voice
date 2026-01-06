@@ -38,9 +38,16 @@ const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY
 const TTS_MODEL_ID = 'eleven_v3'
 const GPT_MODEL_ID = 'gpt-5.2'
 
-const elevenlabs = new ElevenLabsClient({
-  apiKey: ELEVENLABS_API_KEY,
-})
+// Initialize client lazily to avoid errors when API key is missing
+let elevenlabs: ElevenLabsClient | null = null
+const getElevenLabsClient = () => {
+  if (!elevenlabs && ELEVENLABS_API_KEY) {
+    elevenlabs = new ElevenLabsClient({
+      apiKey: ELEVENLABS_API_KEY,
+    })
+  }
+  return elevenlabs
+}
 
 interface Voice {
   voice_id: string
@@ -172,7 +179,11 @@ function App() {
     }
 
     try {
-      const audio = await elevenlabs.textToSpeech.convert(voiceId, {
+      const client = getElevenLabsClient()
+      if (!client) {
+        throw new Error('ElevenLabs API key not configured')
+      }
+      const audio = await client.textToSpeech.convert(voiceId, {
         text: text,
         modelId: TTS_MODEL_ID,
         outputFormat: 'mp3_44100_128',
